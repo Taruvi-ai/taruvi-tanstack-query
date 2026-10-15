@@ -1,0 +1,43 @@
+{
+  "name": "@taruvi/tanstack-query",
+  "version": "0.1.0",
+  "description": "Framework-agnostic helpers for Taruvi. Provider methods return TanStack Query options. Functions, analytics, and file URL or download calls take the SDK client directly.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.cjs.json && mkdir -p dist/cjs && printf '%s\\n' '{ \"type\": \"commonjs\" }' > dist/cjs/package.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "taruvi",
+    "tanstack",
+    "react-query",
+    "query",
+    "database"
+  ],
+  "dependencies": {
+    "@tanstack/query-core": "^5.59.0",
+    "@taruvi/sdk": "^1.5.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
