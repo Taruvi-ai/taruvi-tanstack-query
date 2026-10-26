@@ -25,7 +25,7 @@ export function databaseMethods(config: TaruviServicesConfig, queryClient: Taruv
     mutation: T,
     tableName: string,
   ) =>
-    refreshOnSuccess(mutation, () => invalidateTaruviTable(queryClient, tableName));
+    refreshOnSuccess(mutation, () => invalidateTaruviTable(config.keys, queryClient, tableName));
 
   return {
     list<T>(args: WithoutConfig<Parameters<typeof listQuery<T>>[0]>) {

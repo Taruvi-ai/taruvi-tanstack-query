@@ -51,6 +51,7 @@ export type QueryOptions = {
 };
 
 export type TaruviServicesConfig = {
+  keys: TaruviQueryKeys;
   database: Database;
   getStorage: () => Storage;
   getUsers: () => User;
@@ -61,6 +62,7 @@ export type TaruviServicesConfig = {
 
 export function createTaruviServicesConfig(client: Client): TaruviServicesConfig {
   return {
+    keys: createTaruviQueryKeys(client),
     database: new Database(client),
     getStorage: () => new Storage(client),
     getUsers: () => new User(client),
@@ -132,6 +134,22 @@ export const taruviQueryKeys = {
     userAttributes: () => [...settingsKey(), "userAttributes"],
   },
 };
+
+export type TaruviQueryKeys = typeof taruviQueryKeys;
+
+export function createTaruviQueryKeys(client: Client): TaruviQueryKeys {
+  const { apiUrl, appSlug } = client.getConfig();
+  const scopeAll = (node: object): object =>
+    Object.fromEntries(
+      Object.entries(node).map(([name, value]) => [
+        name,
+        typeof value === "function"
+          ? (...args: unknown[]) => [TARUVI_ROOT, apiUrl, appSlug ?? "", ...value(...args).slice(1)]
+          : scopeAll(value),
+      ]),
+    );
+  return scopeAll(taruviQueryKeys) as TaruviQueryKeys;
+}
 
 export function serializeParams(value: unknown) {
   return JSON.stringify(value, (_key, nested) => {

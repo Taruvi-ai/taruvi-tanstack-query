@@ -12,7 +12,7 @@ export function storageMethods(config: TaruviServicesConfig, queryClient: Taruvi
   const refreshBucket = <T extends { mutationFn: (...args: any[]) => Promise<any> }>(
     mutation: T,
     bucket: string,
-  ) => refreshOnSuccess(mutation, () => invalidateTaruviStorage(queryClient, bucket));
+  ) => refreshOnSuccess(mutation, () => invalidateTaruviStorage(config.keys, queryClient, bucket));
 
   return {
     list(args: WithoutConfig<Parameters<typeof storageListQuery>[0]>) {

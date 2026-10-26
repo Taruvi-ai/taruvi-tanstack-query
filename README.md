@@ -141,11 +141,28 @@ After a write succeeds, the provider invalidates the area that write changed, be
 | `taruvi.invalidate.users(queryClient)` | User queries |
 | `taruvi.invalidate.settings(queryClient)` | Settings queries |
 
-`taruviQueryKeys` builds those same keys when the app calls `invalidateQueries` itself.
+Every key starts with `["taruvi", apiUrl, appSlug]`, so providers for different sites or apps can share one `QueryClient` without reading each other's rows. `taruvi.keys` (or `createTaruviQueryKeys(client)`) builds those same keys when the app calls `invalidateQueries` itself. The key does not include the signed-in user, so call `queryClient.clear()` after switching user.
 
 ## Session
 
-The token lives on the SDK `Client`. A new token on that same client is `new Auth(client).setSession(token)` from `@taruvi/sdk`. A different client means calling `createTaruviProvider` again. Logout is `queryClient.clear()`.
+The token lives on the SDK `Client`. `Auth` is re-exported from this package for hosted login, session validation, and logout:
+
+```ts
+import { Auth } from "@taruvi/tanstack-query";
+
+const auth = new Auth(client);
+// In a browser, redirect to hosted sign-in and return to this app:
+auth.login(window.location.origin);
+// After returning, Client captures the session token from the URL.
+await auth.validateSession();
+// On sign-out, discard queries belonging to the previous user:
+queryClient.clear();
+await auth.logout(window.location.origin);
+```
+
+`deskUrl` on the client optionally sets the hosted sign-in host; it defaults to `apiUrl`. Render protected screens only after the session validates. A 403 means the signed-in account lacks permission and does not clear its token; 401, 410, and 419 invalidate the session.
+
+A new token on the same client is `auth.setSession(token)`. Clear cached queries when switching users. A different client means calling `createTaruviProvider` again.
 
 `taruvi.errors.describe(err)` turns a failure into one line: `detail` or `message` on a `TaruviError`, the `Error` message otherwise, and `"Unknown error"` when the value is not an `Error`.
 

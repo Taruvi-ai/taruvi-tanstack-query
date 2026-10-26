@@ -2,7 +2,6 @@ import type { Database, EdgeRequest, GraphFormat, GraphInclude, TaruviResponse }
 import {
   withEnabledOptions,
   serializeParams,
-  taruviQueryKeys,
   type QueryOptions,
   type TaruviListParams,
   type TaruviListResult,
@@ -66,7 +65,7 @@ export function listQuery<T>(
   const { config, tableName, queryOptions, ...params } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.list(tableName, serializeParams(params)),
+    queryKey: config.keys.table.list(tableName, serializeParams(params)),
     queryFn: () => executeList<T>(config, tableName, params),
   };
 }
@@ -84,7 +83,7 @@ export function oneQuery<T>(args: {
   const variant = serializeParams({ populate, populateAll, allowedActions });
   return {
     ...withEnabledOptions(tableName.length > 0 && id != null, queryOptions),
-    queryKey: [...taruviQueryKeys.table.detail(tableName, id ?? ""), variant],
+    queryKey: [...config.keys.table.detail(tableName, id ?? ""), variant],
     queryFn: () => executeOne<T>(config, tableName, id, { populate, populateAll, allowedActions }),
   };
 }
@@ -99,7 +98,7 @@ export function firstQuery<T>(
   const { config, tableName, queryOptions, ...params } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.first(tableName, serializeParams(params)),
+    queryKey: config.keys.table.first(tableName, serializeParams(params)),
     queryFn: () => applyTableQueryOptions<T>(config.database, tableName, params).first(),
   };
 }
@@ -114,7 +113,7 @@ export function countQuery(
   const { config, tableName, queryOptions, ...params } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.count(tableName, serializeParams(params)),
+    queryKey: config.keys.table.count(tableName, serializeParams(params)),
     queryFn: () => applyTableQueryOptions(config.database, tableName, params).count(),
   };
 }
@@ -130,7 +129,7 @@ export function infiniteListQuery<T>(
   const { config, tableName, pageSize = 20, queryOptions, ...rest } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.infinite(tableName, serializeParams({ ...rest, pageSize })),
+    queryKey: config.keys.table.infinite(tableName, serializeParams({ ...rest, pageSize })),
     initialPageParam: 1,
     queryFn: ({ pageParam }: { pageParam: number }) =>
       executeList<T>(config, tableName, { ...rest, page: pageParam, pageSize }),
@@ -152,7 +151,7 @@ export function graphQuery<T>(args: {
   const { config, tableName, id, include, depth, format, types, queryOptions } = args;
   return {
     ...withEnabledOptions(tableName.length > 0 && id != null, queryOptions),
-    queryKey: taruviQueryKeys.table.graph(tableName, id ?? "", serializeParams({ include, depth, format, types })),
+    queryKey: config.keys.table.graph(tableName, id ?? "", serializeParams({ include, depth, format, types })),
     queryFn: () => {
       let q = config.database.from<T>(tableName).get(String(id));
       if (include) q = q.include(include);
@@ -172,7 +171,7 @@ export function edgesQuery<T>(args: {
   const { config, tableName, queryOptions } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.edges(tableName),
+    queryKey: config.keys.table.edges(tableName),
     queryFn: () => config.database.from<T>(tableName).edges().execute(),
   };
 }

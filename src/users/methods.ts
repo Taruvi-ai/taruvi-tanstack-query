@@ -16,7 +16,7 @@ import {
 
 export function userMethods(config: TaruviServicesConfig, queryClient: TaruviQueryClient) {
   const refreshUsers = <T extends { mutationFn: (...args: any[]) => Promise<any> }>(mutation: T) =>
-    refreshOnSuccess(mutation, () => invalidateTaruviUsers(queryClient));
+    refreshOnSuccess(mutation, () => invalidateTaruviUsers(config.keys, queryClient));
 
   return {
     current(args: WithoutConfig<Parameters<typeof currentUserQuery>[0]>) {

@@ -2,7 +2,6 @@ import type { User } from "@taruvi/sdk";
 import {
   withEnabledOptions,
   serializeParams,
-  taruviQueryKeys,
   type QueryOptions,
   type TaruviServicesConfig,
 } from "../query.js";
@@ -14,7 +13,7 @@ export function currentUserQuery(args: {
 }) {
   return {
     ...withEnabledOptions(args.params != null, args.queryOptions),
-    queryKey: taruviQueryKeys.users.current(serializeParams(args.params ?? [])),
+    queryKey: args.config.keys.users.current(serializeParams(args.params ?? [])),
     queryFn: () => args.config.getUsers().getUser(...args.params!),
   };
 }
@@ -27,7 +26,7 @@ export function usersListQuery(args: {
   const params = args.params ?? ([] as Parameters<User["list"]>);
   return {
     ...args.queryOptions,
-    queryKey: taruviQueryKeys.users.list(serializeParams(params)),
+    queryKey: args.config.keys.users.list(serializeParams(params)),
     queryFn: () => args.config.getUsers().list(...params),
   };
 }
@@ -39,7 +38,7 @@ export function userQuery(args: {
 }) {
   return {
     ...withEnabledOptions(args.params != null, args.queryOptions),
-    queryKey: taruviQueryKeys.users.one(serializeParams(args.params ?? [])),
+    queryKey: args.config.keys.users.one(serializeParams(args.params ?? [])),
     queryFn: () => args.config.getUsers().getUser(...args.params!),
   };
 }
@@ -50,7 +49,7 @@ export function userPreferencesQuery(args: {
 }) {
   return {
     ...args.queryOptions,
-    queryKey: taruviQueryKeys.users.preferences(),
+    queryKey: args.config.keys.users.preferences(),
     queryFn: () => args.config.getUsers().getPreferences(),
   };
 }
@@ -62,7 +61,7 @@ export function userAppsQuery(args: {
 }) {
   return {
     ...withEnabledOptions(args.params != null, args.queryOptions),
-    queryKey: taruviQueryKeys.users.apps(serializeParams(args.params ?? [])),
+    queryKey: args.config.keys.users.apps(serializeParams(args.params ?? [])),
     queryFn: () => args.config.getUsers().getUserApps(...args.params!),
   };
 }

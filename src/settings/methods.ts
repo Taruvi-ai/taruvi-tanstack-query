@@ -16,7 +16,7 @@ export function settingsMethods(config: TaruviServicesConfig, queryClient: Taruv
           mutationFn: (schema: Record<string, unknown>) =>
             config.getSettings().updateUserAttributes<T>(schema),
         },
-        () => invalidateTaruviSettings(queryClient),
+        () => invalidateTaruviSettings(config.keys, queryClient),
       );
     },
   };
