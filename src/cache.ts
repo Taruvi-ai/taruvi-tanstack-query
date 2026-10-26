@@ -1,5 +1,5 @@
 import type { QueryKey } from "@tanstack/query-core";
-import { taruviQueryKeys } from "./query.js";
+import type { TaruviQueryKeys } from "./query.js";
 
 export type TaruviQueryClient = {
   invalidateQueries: (filters: { queryKey: QueryKey }) => Promise<void>;
@@ -22,31 +22,31 @@ export function invalidateTaruviQuery(queryClient: TaruviQueryClient, queryKey: 
   return queryClient.invalidateQueries({ queryKey });
 }
 
-export function invalidateTaruviDatabase(queryClient: TaruviQueryClient) {
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.database() });
+export function invalidateTaruviDatabase(keys: TaruviQueryKeys, queryClient: TaruviQueryClient) {
+  return queryClient.invalidateQueries({ queryKey: keys.database() });
 }
 
-export function invalidateTaruviTable(queryClient: TaruviQueryClient, table: string) {
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.table.all(table) });
+export function invalidateTaruviTable(keys: TaruviQueryKeys, queryClient: TaruviQueryClient, table: string) {
+  return queryClient.invalidateQueries({ queryKey: keys.table.all(table) });
 }
 
-export function invalidateTaruviLists(queryClient: TaruviQueryClient, table: string) {
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.table.lists(table) });
+export function invalidateTaruviLists(keys: TaruviQueryKeys, queryClient: TaruviQueryClient, table: string) {
+  return queryClient.invalidateQueries({ queryKey: keys.table.lists(table) });
 }
 
-export function invalidateTaruviRecord(queryClient: TaruviQueryClient, table: string, id: string | number) {
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.table.detail(table, id) });
+export function invalidateTaruviRecord(keys: TaruviQueryKeys, queryClient: TaruviQueryClient, table: string, id: string | number) {
+  return queryClient.invalidateQueries({ queryKey: keys.table.detail(table, id) });
 }
 
-export function invalidateTaruviStorage(queryClient: TaruviQueryClient, bucket?: string) {
-  if (bucket) return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.storage.bucket(bucket) });
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.storage.all() });
+export function invalidateTaruviStorage(keys: TaruviQueryKeys, queryClient: TaruviQueryClient, bucket?: string) {
+  if (bucket) return queryClient.invalidateQueries({ queryKey: keys.storage.bucket(bucket) });
+  return queryClient.invalidateQueries({ queryKey: keys.storage.all() });
 }
 
-export function invalidateTaruviUsers(queryClient: TaruviQueryClient) {
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.users.all() });
+export function invalidateTaruviUsers(keys: TaruviQueryKeys, queryClient: TaruviQueryClient) {
+  return queryClient.invalidateQueries({ queryKey: keys.users.all() });
 }
 
-export function invalidateTaruviSettings(queryClient: TaruviQueryClient) {
-  return queryClient.invalidateQueries({ queryKey: taruviQueryKeys.settings.all() });
+export function invalidateTaruviSettings(keys: TaruviQueryKeys, queryClient: TaruviQueryClient) {
+  return queryClient.invalidateQueries({ queryKey: keys.settings.all() });
 }

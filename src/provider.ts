@@ -30,15 +30,18 @@ export function createTaruviProvider(client: Client, queryClient: TaruviQueryCli
     app: appMethods(config),
     settings: settingsMethods(config, queryClient),
 
+    keys: config.keys,
+
     invalidate: {
       query: invalidateTaruviQuery,
-      database: invalidateTaruviDatabase,
-      table: invalidateTaruviTable,
-      lists: invalidateTaruviLists,
-      record: invalidateTaruviRecord,
-      storage: invalidateTaruviStorage,
-      users: invalidateTaruviUsers,
-      settings: invalidateTaruviSettings,
+      database: (qc: TaruviQueryClient) => invalidateTaruviDatabase(config.keys, qc),
+      table: (qc: TaruviQueryClient, table: string) => invalidateTaruviTable(config.keys, qc, table),
+      lists: (qc: TaruviQueryClient, table: string) => invalidateTaruviLists(config.keys, qc, table),
+      record: (qc: TaruviQueryClient, table: string, id: string | number) =>
+        invalidateTaruviRecord(config.keys, qc, table, id),
+      storage: (qc: TaruviQueryClient, bucket?: string) => invalidateTaruviStorage(config.keys, qc, bucket),
+      users: (qc: TaruviQueryClient) => invalidateTaruviUsers(config.keys, qc),
+      settings: (qc: TaruviQueryClient) => invalidateTaruviSettings(config.keys, qc),
     },
 
     errors: {

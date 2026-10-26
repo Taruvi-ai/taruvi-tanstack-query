@@ -23,9 +23,9 @@ function appReadQuery<T>(
 }
 
 export function appRolesQuery<T = unknown>(args: AppQueryArgs) {
-  return appReadQuery<T>(args, taruviQueryKeys.app.roles(), (app) => app.roles().execute());
+  return appReadQuery<T>(args, args.config.keys.app.roles(), (app) => app.roles().execute());
 }
 
 export function appSettingsQuery<T = unknown>(args: AppQueryArgs) {
-  return appReadQuery<T>(args, taruviQueryKeys.app.settings(), (app) => app.settings().execute());
+  return appReadQuery<T>(args, args.config.keys.app.settings(), (app) => app.settings().execute());
 }

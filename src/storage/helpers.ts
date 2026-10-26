@@ -8,7 +8,6 @@ import type {
 import {
   withEnabledOptions,
   serializeParams,
-  taruviQueryKeys,
   type QueryOptions,
   type TaruviServicesConfig,
 } from "../query.js";
@@ -25,7 +24,7 @@ export function storageListQuery(args: {
   const { config, bucket, filters, queryOptions } = args;
   return {
     ...withEnabledOptions(bucket.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.storage.list(bucket, serializeParams(filters ?? {})),
+    queryKey: config.keys.storage.list(bucket, serializeParams(filters ?? {})),
     queryFn: async () => {
       const storage = config.getStorage();
       let q = storage.from(bucket);
@@ -44,7 +43,7 @@ export function storageMetadataQuery(args: {
   const { config, bucket, path, queryOptions } = args;
   return {
     ...withEnabledOptions(bucket.length > 0 && !!path, queryOptions),
-    queryKey: taruviQueryKeys.storage.metadata(bucket, path ?? ""),
+    queryKey: config.keys.storage.metadata(bucket, path ?? ""),
     queryFn: () =>
       config.getStorage().from(bucket).metadata(String(path)).execute<StorageResponse>(),
   };

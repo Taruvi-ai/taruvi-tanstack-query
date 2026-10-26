@@ -1,5 +1,4 @@
 import {
-  taruviQueryKeys,
   type QueryOptions,
   type TaruviServicesConfig,
 } from "../query.js";
@@ -10,7 +9,7 @@ export function siteSettingsQuery<T = unknown>(args: {
 }) {
   return {
     ...args.queryOptions,
-    queryKey: taruviQueryKeys.settings.site(),
+    queryKey: args.config.keys.settings.site(),
     queryFn: () => args.config.getSettings().get<T>(),
   };
 }
@@ -21,7 +20,7 @@ export function userAttributesQuery<T = unknown>(args: {
 }) {
   return {
     ...args.queryOptions,
-    queryKey: taruviQueryKeys.settings.userAttributes(),
+    queryKey: args.config.keys.settings.userAttributes(),
     queryFn: () => args.config.getSettings().getUserAttributes<T>(),
   };
 }

@@ -1,4 +1,4 @@
-export { Client } from "@taruvi/sdk";
+export { Auth, Client } from "@taruvi/sdk";
 export type { EdgeRequest } from "@taruvi/sdk";
 
 export { createTaruviProvider } from "./provider.js";
@@ -9,4 +9,4 @@ export { analyticsExecute } from "./analytics/direct.js";
 export { functions } from "./functions/direct.js";
 export type { FunctionCursorPage, FunctionResult } from "./functions/direct.js";
 
-export { taruviQueryKeys } from "./query.js";
+export { createTaruviQueryKeys } from "./query.js";
