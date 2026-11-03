@@ -1,6 +1,7 @@
 import type { GetAllowedActionsOptions, Resource, Resources } from "@taruvi/sdk";
 import {
   withEnabledOptions,
+  withQuerySignal,
   serializeParams,
   type QueryOptions,
   type TaruviServicesConfig,
@@ -19,7 +20,7 @@ export function allowedActionsQuery(args: {
   return {
     ...withEnabledOptions(resource.kind.length > 0 && resource.id.length > 0, queryOptions),
     queryKey: config.keys.policy.allowed(serializeParams({ resource: subject, options })),
-    queryFn: () => config.getPolicy().getAllowedActions(subject, options),
+    queryFn: withQuerySignal(() => config.getPolicy().getAllowedActions(subject, options)),
   };
 }
 
@@ -32,6 +33,6 @@ export function checkResourcesQuery(args: {
   return {
     ...withEnabledOptions(resources.length > 0, queryOptions),
     queryKey: config.keys.policy.check(serializeParams(resources)),
-    queryFn: () => config.getPolicy().checkResource(resources),
+    queryFn: withQuerySignal(() => config.getPolicy().checkResource(resources)),
   };
 }

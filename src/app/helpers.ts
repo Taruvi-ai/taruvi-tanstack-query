@@ -1,6 +1,8 @@
 import type { App } from "@taruvi/sdk";
 import {
   taruviQueryKeys,
+  withEnabledOptions,
+  withQuerySignal,
   type QueryOptions,
   type TaruviServicesConfig,
 } from "../query.js";
@@ -16,9 +18,9 @@ function appReadQuery<T>(
   read: (app: App) => Promise<unknown>,
 ) {
   return {
-    ...args.queryOptions,
+    ...withEnabledOptions(true, args.queryOptions),
     queryKey,
-    queryFn: () => read(args.config.getApp()) as Promise<T>,
+    queryFn: withQuerySignal(() => read(args.config.getApp()) as Promise<T>),
   };
 }
 

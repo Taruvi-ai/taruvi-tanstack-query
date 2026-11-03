@@ -16,10 +16,16 @@ import {
 
 export function userMethods(config: TaruviServicesConfig, queryClient: TaruviQueryClient) {
   const refreshUsers = <T extends { mutationFn: (...args: any[]) => Promise<any> }>(mutation: T) =>
-    refreshOnSuccess(mutation, () => invalidateTaruviUsers(config.keys, queryClient));
+    refreshOnSuccess(mutation, (active) => invalidateTaruviUsers(config.keys, active), queryClient);
+  const refreshRoles = <T extends { mutationFn: (...args: any[]) => Promise<any> }>(mutation: T) =>
+    refreshOnSuccess(mutation, async (active) => {
+      await invalidateTaruviUsers(config.keys, active);
+      await active.invalidateQueries({ queryKey: config.keys.policy.all() });
+      await active.invalidateQueries({ queryKey: config.keys.app.roles() });
+    }, queryClient);
 
   return {
-    current(args: WithoutConfig<Parameters<typeof currentUserQuery>[0]>) {
+    current(args?: WithoutConfig<Parameters<typeof currentUserQuery>[0]>) {
       return currentUserQuery({ config, ...args });
     },
     list(args?: WithoutConfig<Parameters<typeof usersListQuery>[0]>) {
@@ -47,10 +53,10 @@ export function userMethods(config: TaruviServicesConfig, queryClient: TaruviQue
       return refreshUsers(deleteUserMutation({ config }));
     },
     assignRoles() {
-      return refreshUsers(assignRolesMutation({ config }));
+      return refreshRoles(assignRolesMutation({ config }));
     },
     revokeRoles() {
-      return refreshUsers(revokeRolesMutation({ config }));
+      return refreshRoles(revokeRolesMutation({ config }));
     },
   };
 }
