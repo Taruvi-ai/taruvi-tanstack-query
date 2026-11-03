@@ -1,4 +1,5 @@
 import type { Client } from "@taruvi/sdk";
+import type { QueryKey } from "@tanstack/query-core";
 import {
   invalidateTaruviDatabase,
   invalidateTaruviLists,
@@ -19,10 +20,14 @@ import { settingsMethods } from "./settings/methods.js";
 import { storageMethods } from "./storage/methods.js";
 import { userMethods } from "./users/methods.js";
 
-export function createTaruviProvider(client: Client, queryClient: TaruviQueryClient) {
+export function createTaruviProvider<TQueryClient extends TaruviQueryClient>(
+  client: Client,
+  queryClient: TQueryClient,
+) {
   const config = createTaruviServicesConfig(client);
 
   return {
+    queryClient,
     database: databaseMethods(config, queryClient),
     storage: storageMethods(config, queryClient),
     users: userMethods(config, queryClient),
@@ -30,15 +35,17 @@ export function createTaruviProvider(client: Client, queryClient: TaruviQueryCli
     app: appMethods(config),
     settings: settingsMethods(config, queryClient),
 
+    keys: config.keys,
+
     invalidate: {
-      query: invalidateTaruviQuery,
-      database: invalidateTaruviDatabase,
-      table: invalidateTaruviTable,
-      lists: invalidateTaruviLists,
-      record: invalidateTaruviRecord,
-      storage: invalidateTaruviStorage,
-      users: invalidateTaruviUsers,
-      settings: invalidateTaruviSettings,
+      query: (queryKey: QueryKey) => invalidateTaruviQuery(queryClient, queryKey),
+      database: () => invalidateTaruviDatabase(config.keys, queryClient),
+      table: (table: string) => invalidateTaruviTable(config.keys, queryClient, table),
+      lists: (table: string) => invalidateTaruviLists(config.keys, queryClient, table),
+      record: (table: string, id: string | number) => invalidateTaruviRecord(config.keys, queryClient, table, id),
+      storage: (bucket?: string) => invalidateTaruviStorage(config.keys, queryClient, bucket),
+      users: () => invalidateTaruviUsers(config.keys, queryClient),
+      settings: () => invalidateTaruviSettings(config.keys, queryClient),
     },
 
     errors: {

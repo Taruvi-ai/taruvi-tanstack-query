@@ -1,8 +1,8 @@
 import type { Database, EdgeRequest, GraphFormat, GraphInclude, TaruviResponse } from "@taruvi/sdk";
 import {
   withEnabledOptions,
+  withQuerySignal,
   serializeParams,
-  taruviQueryKeys,
   type QueryOptions,
   type TaruviListParams,
   type TaruviListResult,
@@ -66,8 +66,8 @@ export function listQuery<T>(
   const { config, tableName, queryOptions, ...params } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.list(tableName, serializeParams(params)),
-    queryFn: () => executeList<T>(config, tableName, params),
+    queryKey: config.keys.table.list(tableName, serializeParams(params)),
+    queryFn: withQuerySignal(() => executeList<T>(config, tableName, params)),
   };
 }
 
@@ -84,8 +84,8 @@ export function oneQuery<T>(args: {
   const variant = serializeParams({ populate, populateAll, allowedActions });
   return {
     ...withEnabledOptions(tableName.length > 0 && id != null, queryOptions),
-    queryKey: [...taruviQueryKeys.table.detail(tableName, id ?? ""), variant],
-    queryFn: () => executeOne<T>(config, tableName, id, { populate, populateAll, allowedActions }),
+    queryKey: [...config.keys.table.detail(tableName, id ?? ""), variant],
+    queryFn: withQuerySignal(() => executeOne<T>(config, tableName, id, { populate, populateAll, allowedActions })),
   };
 }
 
@@ -99,8 +99,8 @@ export function firstQuery<T>(
   const { config, tableName, queryOptions, ...params } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.first(tableName, serializeParams(params)),
-    queryFn: () => applyTableQueryOptions<T>(config.database, tableName, params).first(),
+    queryKey: config.keys.table.first(tableName, serializeParams(params)),
+    queryFn: withQuerySignal(() => applyTableQueryOptions<T>(config.database, tableName, params).first()),
   };
 }
 
@@ -114,8 +114,8 @@ export function countQuery(
   const { config, tableName, queryOptions, ...params } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.count(tableName, serializeParams(params)),
-    queryFn: () => applyTableQueryOptions(config.database, tableName, params).count(),
+    queryKey: config.keys.table.count(tableName, serializeParams(params)),
+    queryFn: withQuerySignal(() => applyTableQueryOptions(config.database, tableName, params).count()),
   };
 }
 
@@ -130,12 +130,25 @@ export function infiniteListQuery<T>(
   const { config, tableName, pageSize = 20, queryOptions, ...rest } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.infinite(tableName, serializeParams({ ...rest, pageSize })),
+    queryKey: config.keys.table.infinite(tableName, serializeParams({ ...rest, pageSize })),
     initialPageParam: 1,
-    queryFn: ({ pageParam }: { pageParam: number }) =>
-      executeList<T>(config, tableName, { ...rest, page: pageParam, pageSize }),
-    getNextPageParam: (last: TaruviListResult<T>, _pages: TaruviListResult<T>[], page: number) =>
-      last.pagination?.has_next ? page + 1 : undefined,
+    queryFn: withQuerySignal(({ pageParam }: { signal: AbortSignal; pageParam: number }) =>
+      executeList<T>(config, tableName, { ...rest, page: pageParam, pageSize })),
+    getNextPageParam: (last: TaruviListResult<T>, pages: TaruviListResult<T>[], page: number) => {
+      const pagination = last.pagination;
+      if (pagination && typeof pagination.has_next === "boolean") return pagination.has_next ? page + 1 : undefined;
+      if (pagination && typeof pagination.current_page === "number" && typeof pagination.total_pages === "number") {
+        return pagination.current_page < pagination.total_pages ? page + 1 : undefined;
+      }
+      if (last.rows.length === 0) return undefined;
+      const loaded = pages.reduce((sum, item) => sum + item.rows.length, 0);
+      return last.total > loaded ? page + 1 : undefined;
+    },
+    getPreviousPageParam: (first: TaruviListResult<T>, _pages: TaruviListResult<T>[], page: number) => {
+      if (page <= 1) return undefined;
+      if (first.pagination && first.pagination.has_previous === false) return undefined;
+      return page - 1;
+    },
   };
 }
 
@@ -152,15 +165,15 @@ export function graphQuery<T>(args: {
   const { config, tableName, id, include, depth, format, types, queryOptions } = args;
   return {
     ...withEnabledOptions(tableName.length > 0 && id != null, queryOptions),
-    queryKey: taruviQueryKeys.table.graph(tableName, id ?? "", serializeParams({ include, depth, format, types })),
-    queryFn: () => {
+    queryKey: config.keys.table.graph(tableName, id ?? "", serializeParams({ include, depth, format, types })),
+    queryFn: withQuerySignal(() => {
       let q = config.database.from<T>(tableName).get(String(id));
       if (include) q = q.include(include);
       if (depth != null) q = q.depth(depth);
       if (format) q = q.format(format);
       if (types?.length) q = q.types(types);
       return q.execute();
-    },
+    }),
   };
 }
 
@@ -172,8 +185,8 @@ export function edgesQuery<T>(args: {
   const { config, tableName, queryOptions } = args;
   return {
     ...withEnabledOptions(tableName.length > 0, queryOptions),
-    queryKey: taruviQueryKeys.table.edges(tableName),
-    queryFn: () => config.database.from<T>(tableName).edges().execute(),
+    queryKey: config.keys.table.edges(tableName),
+    queryFn: withQuerySignal(() => config.database.from<T>(tableName).edges().execute()),
   };
 }
 
@@ -256,7 +269,7 @@ export function deleteManyMutation(args: {
   };
 }
 
-export type DeleteFilteredCriteria = Pick<TaruviListParams, "filters" | "filtersTree" | "search">;
+export type DeleteFilteredCriteria = Pick<TaruviListParams, "filters" | "filtersTree">;
 
 export function deleteFilteredMutation(args: {
   config: TaruviServicesConfig;

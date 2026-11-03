@@ -1,5 +1,6 @@
 import {
-  taruviQueryKeys,
+  withEnabledOptions,
+  withQuerySignal,
   type QueryOptions,
   type TaruviServicesConfig,
 } from "../query.js";
@@ -9,9 +10,9 @@ export function siteSettingsQuery<T = unknown>(args: {
   queryOptions?: QueryOptions;
 }) {
   return {
-    ...args.queryOptions,
-    queryKey: taruviQueryKeys.settings.site(),
-    queryFn: () => args.config.getSettings().get<T>(),
+    ...withEnabledOptions(true, args.queryOptions),
+    queryKey: args.config.keys.settings.site(),
+    queryFn: withQuerySignal(() => args.config.getSettings().get<T>()),
   };
 }
 
@@ -20,8 +21,8 @@ export function userAttributesQuery<T = unknown>(args: {
   queryOptions?: QueryOptions;
 }) {
   return {
-    ...args.queryOptions,
-    queryKey: taruviQueryKeys.settings.userAttributes(),
-    queryFn: () => args.config.getSettings().getUserAttributes<T>(),
+    ...withEnabledOptions(true, args.queryOptions),
+    queryKey: args.config.keys.settings.userAttributes(),
+    queryFn: withQuerySignal(() => args.config.getSettings().getUserAttributes<T>()),
   };
 }

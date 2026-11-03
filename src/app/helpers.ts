@@ -1,6 +1,8 @@
 import type { App } from "@taruvi/sdk";
 import {
   taruviQueryKeys,
+  withEnabledOptions,
+  withQuerySignal,
   type QueryOptions,
   type TaruviServicesConfig,
 } from "../query.js";
@@ -16,16 +18,16 @@ function appReadQuery<T>(
   read: (app: App) => Promise<unknown>,
 ) {
   return {
-    ...args.queryOptions,
+    ...withEnabledOptions(true, args.queryOptions),
     queryKey,
-    queryFn: () => read(args.config.getApp()) as Promise<T>,
+    queryFn: withQuerySignal(() => read(args.config.getApp()) as Promise<T>),
   };
 }
 
 export function appRolesQuery<T = unknown>(args: AppQueryArgs) {
-  return appReadQuery<T>(args, taruviQueryKeys.app.roles(), (app) => app.roles().execute());
+  return appReadQuery<T>(args, args.config.keys.app.roles(), (app) => app.roles().execute());
 }
 
 export function appSettingsQuery<T = unknown>(args: AppQueryArgs) {
-  return appReadQuery<T>(args, taruviQueryKeys.app.settings(), (app) => app.settings().execute());
+  return appReadQuery<T>(args, args.config.keys.app.settings(), (app) => app.settings().execute());
 }

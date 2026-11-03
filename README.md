@@ -1,87 +1,105 @@
 # @taruvi/tanstack-query
 
-`@taruvi/tanstack-query` connects a Taruvi `Client` to [TanStack Query](https://tanstack.com/query). `createTaruviProvider(client, queryClient)` returns the options object TanStack already understands: `queryKey`, `queryFn`, and, for writes, `mutationFn`. The app passes that object to `useQuery`, `useMutation`, or `useInfiniteQuery`.
+`createTaruviProvider(client, queryClient)` returns TanStack Query options (`queryKey`, `queryFn`, `mutationFn`). Pass them to `useQuery`, `useMutation`, or `useInfiniteQuery`. The same object works with Vue Query and Svelte Query.
 
-The `QueryClient` given to `createTaruviProvider` is the same one the screen reads. Cache refreshes from this package land in that client.
-
-Functions, analytics, file URLs, and downloads are plain functions. They take the SDK `Client` and return a value.
+`taruvi.queryClient` is that `QueryClient`. Pass it to `QueryClientProvider`. `taruvi.invalidate` refreshes it. Functions, analytics, file URLs, and downloads are plain functions on the SDK `Client`.
 
 ## Install
 
 ```bash
-npm install @taruvi/tanstack-query
+npm install @taruvi/tanstack-query @taruvi/sdk@1.5.4 axios
 ```
 
-npm installs `@taruvi/sdk` and `@tanstack/query-core` with it.
+`@tanstack/query-core`, `@taruvi/sdk`, and `axios` are peers. Install the query-core copy that comes with `@tanstack/react-query`, `@tanstack/vue-query`, or `@tanstack/svelte-query`. Install `@taruvi/sdk` 1.5.4 and axios 1.x in the app, so this package and the app share one `QueryClient` and one SDK.
 
-The React, Vue, or Svelte query package stays in the app: `@tanstack/react-query`, `@tanstack/vue-query`, or `@tanstack/svelte-query`.
+## React
 
-## A React screen
+Create the `Client` and `QueryClient` once per browser tab, or once per server request. Do not construct them at module scope.
 
 ```tsx
-import {
-  QueryClient,
-  QueryClientProvider,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-} from "@tanstack/react-query";
-import { Client, createTaruviProvider } from "@taruvi/tanstack-query";
+import { useState } from "react";
+import { QueryClient, QueryClientProvider, useQuery, useMutation } from "@tanstack/react-query";
+import { Client, createTaruviProvider, type TaruviProvider } from "@taruvi/tanstack-query";
 
-const client = new Client({ apiUrl, appSlug, token });
-const queryClient = new QueryClient();
-const taruvi = createTaruviProvider(client, queryClient);
+function makeTaruvi(token?: string) {
+  const sdk = new Client({ apiUrl, appSlug, token });
+  return createTaruviProvider(sdk, new QueryClient());
+}
 
-export function App() {
+let browserTaruvi: TaruviProvider | undefined;
+
+function getTaruvi(token?: string) {
+  if (typeof window === "undefined") return makeTaruvi(token);
+  browserTaruvi ??= makeTaruvi(token);
+  return browserTaruvi;
+}
+
+export function App({ token }: { token?: string }) {
+  const [taruvi] = useState(() => getTaruvi(token));
   return (
-    <QueryClientProvider client={queryClient}>
-      <Users />
+    <QueryClientProvider client={taruvi.queryClient}>
+      <Users taruvi={taruvi} />
     </QueryClientProvider>
   );
 }
 
-function Users() {
-  const list = useQuery(
-    taruvi.database.list<User>({
-      tableName: "users",
-      filters: [{ field: "status", operator: "eq", value: "active" }],
-      page: 1,
-      pageSize: 20,
-    }),
-  );
-
+function Users({ taruvi }: { taruvi: TaruviProvider }) {
+  const list = useQuery(taruvi.database.list<User>({ tableName: "users", page: 1, pageSize: 20 }));
   const create = useMutation(taruvi.database.create<User>({ tableName: "users" }));
-  const pages = useInfiniteQuery(taruvi.database.infinite<User>({ tableName: "users" }));
-
   // create.mutate({ name: "Ada" })
-  return list.data?.rows ?? pages.data?.pages ?? null;
+  return list.data?.rows ?? null;
 }
 ```
 
-`list()` is already `{ queryKey, queryFn, enabled }`. `useQuery` takes that object as it is. `list.data` is `{ rows, total, pagination }`. `one` and `first` resolve to the row or `null`.
+On the server, each request calls `getTaruvi(token)` again. In the browser, the first pair is kept. Later sign-in is `auth.setSession(token)` on that client.
 
-`create({ tableName: "users" })` only binds the table. The new row is the argument of `mutate`. `infinite` also carries `initialPageParam` and `getNextPageParam`, which is why it belongs on `useInfiniteQuery`.
+`list.data` is `{ rows, total, pagination }`. `one` and `first` resolve to the row or `null`. `infinite` follows `pagination.has_next` when present, otherwise page counts, otherwise `total`. The previous page walks backward unless `has_previous` is false.
 
-A browser client is created with `token`, or through hosted sign-in in `@taruvi/sdk`. An `apiKey` belongs in server code.
+`queryOptions` sets `enabled`, `staleTime`, and `gcTime`. Add other TanStack fields on the object the hook receives. A read stays disabled until it has a table name, id, or params. `database.many` also stays disabled when `ids` is empty. A read passes TanStack's abort signal into the HTTP request, so a cancelled query stops the call. A response that arrives after the abort is discarded.
 
-`queryOptions` on a method covers `enabled`, `staleTime`, and `gcTime`. Any other TanStack field is added on the object the hook receives, for example `{ ...taruvi.database.list({ tableName: "users" }), placeholderData }`. Filter operators are the SDK names, such as `eq`.
+Import `Filter`, `TaruviListResult`, `QueryOptions`, `UpdateVariables`, and `TaruviError` from this package.
 
-A read waits until it has what it needs. An empty `tableName`, a missing `id`, or a missing `params` list leaves `enabled` false.
+## Vue and Svelte
+
+```ts
+import { QueryClient, VueQueryPlugin, useQuery } from "@tanstack/vue-query";
+import { Client, createTaruviProvider } from "@taruvi/tanstack-query";
+
+export function mount(token?: string) {
+  const queryClient = new QueryClient();
+  const taruvi = createTaruviProvider(new Client({ apiUrl, appSlug, token }), queryClient);
+  app.use(VueQueryPlugin, { queryClient: taruvi.queryClient });
+  return useQuery(taruvi.database.list({ tableName: "users" }));
+}
+```
+
+```svelte
+<script lang="ts">
+  import { QueryClient, QueryClientProvider, createQuery } from "@tanstack/svelte-query";
+  import { Client, createTaruviProvider } from "@taruvi/tanstack-query";
+
+  const queryClient = new QueryClient();
+  const taruvi = createTaruviProvider(new Client({ apiUrl, appSlug, token }), queryClient);
+  const list = createQuery(() => taruvi.database.list({ tableName: "users" }));
+</script>
+
+<QueryClientProvider client={queryClient}>{list.data?.rows}</QueryClientProvider>
+```
 
 ## Services
 
 | Provider | Reads | Writes |
 | --- | --- | --- |
 | `database` | `list` `many` `one` `first` `count` `infinite` `graph` `edges` | `create` `update` `delete` `upsert` `createMany` `updateMany` `deleteMany` `deleteFiltered` `createEdges` `deleteEdges` |
-| `storage` | `list` `metadata` | `upload` `delete` `update` |
+| `storage` | `list` `metadata` `browse` `viewAccess` `editAccess` | `upload` `delete` `update` |
 | `users` | `current` `list` `one` `preferences` `apps` | `update` `updatePreferences` `create` `delete` `assignRoles` `revokeRoles` |
 | `policy` | `allowed` `check` | |
 | `app` | `roles` `settings` | |
 | `settings` | `site` `userAttributes` | `updateUserAttributes` |
 
-`users.current({ params: [username] })` and `users.one({ params: [username] })` both call `User.getUser`. The `params` array is the SDK argument list. User writes use that same list: `users.update().mutationFn([username, body])`.
+`users.current()` calls `Auth.getCurrentUser()` and needs no username. It is `null` when there is no token, and the SDK also returns `null` when that request fails. `users.update()` takes `{ username, data }`. `settings.userAttributes` is the tenant schema. A person's values go through `users.update`.
 
-`settings.userAttributes` is the tenant schema. A person's attribute values go through `users.update`.
+`storage.browse` lists one folder (`filters.prefix`, or the bucket root). `viewAccess` and `editAccess` return the SharePoint link. Secrets stay in server code with `@taruvi/sdk`.
 
 | Write | `mutate` argument |
 | --- | --- |
@@ -91,14 +109,20 @@ A read waits until it has what it needs. An empty `tableName`, a missing `id`, o
 | `createMany` | `Partial<T>[]` |
 | `updateMany` | `Array<Partial<T> & { id }>` |
 | `deleteMany` | `Array<string \| number>` |
-| `deleteFiltered` | `{ filters?, filtersTree?, search? }` |
+| `deleteFiltered` | `{ filters?, filtersTree? }` |
 | `createEdges` | `EdgeRequest[]` |
 | `deleteEdges` | `number[]` |
 | `storage.upload` | `{ files, paths, metadatas? }` |
 | `storage.update` | `{ path, body }` |
 | `storage.delete` | `string[]` |
+| `users.update` | `{ username, data }` |
+| `users.create` | user fields such as `username`, `email`, `password` |
+| `users.delete` | `username` |
+| `users.updatePreferences` | preference fields such as `theme` or `timezone` |
+| `users.assignRoles` | `{ roles, usernames, expires_at? }` |
+| `users.revokeRoles` | `{ roles, usernames }` |
 
-`deleteFiltered` removes every row that matches. With an empty filter set, that can be the whole table. Uploads take a web `File` or `{ uri, name, type }`, and `bucket` is set on the storage method call.
+`storage.upload` takes a web `File` or a React Native file `{ uri, name, type }`. Upload and delete throw when any item fails. `error.cause` is the SDK batch response, and the bucket is refreshed when some items succeeded. `deleteFiltered` needs filters. Full-text `search` is not supported there. Delete those rows with `deleteMany`.
 
 ## Direct calls
 
@@ -111,44 +135,39 @@ const stats = await analyticsExecute<Stats>(client, { querySlug: "dashboard", pa
 const result = await functions.query<Stats>(client, { slug: "dashboard", params: { range: "30d" } });
 ```
 
-`storageFileUrl` returns a string. `storageDownload` returns `Promise<Blob>`. `analyticsExecute` returns the SDK response and throws when the query fails.
-
-`functions.query`, `functions.infinite`, and `functions.execute` return `{ data, error }`. A failed function leaves `error` set and does not throw.
+`functions.query`, `functions.infinite`, and `functions.execute` return `{ data, error }` and do not throw. An HTTP 200 body with `status: "error"` is `{ data: null, error: body }`. A successful `query` or `infinite` unwraps `data` when that field is present. `execute` keeps the full response.
 
 ## Cache
 
-After a write succeeds, the provider invalidates the area that write changed, before the mutation resolves:
-
-| Write | Invalidates |
+| Write | What changes |
 | --- | --- |
-| Any `database` write | Every cached query for that table |
+| `database.update` | Patches that row, including a populated copy on another table, then refetches that row |
+| `database.delete` | Removes that row, including a populated copy on another table, then refetches that row |
+| `database.create`, `createMany`, `upsert`, `updateMany`, `deleteMany` | Patches the cached rows for that table. Create adds the returned row |
+| `database.deleteFiltered` | That table's queries |
+| `database.createEdges`, `deleteEdges` | That table's edge and graph queries |
 | Any `storage` write | That bucket |
-| Any `users` write | User queries |
+| `users.assignRoles`, `users.revokeRoles` | Users, policy, and `app.roles` |
+| Other `users` writes | User queries |
 | `settings.updateUserAttributes` | Settings queries |
 
-`policy` and `app` only read. Functions, analytics, downloads, and file URLs stay outside the query cache.
+A failed update or delete restores the cache snapshot. A populated copy keeps the other table's own row. A failed cache refresh does not fail a write that already succeeded.
 
-`taruvi.invalidate` is there for a refresh that did not come from one of those writes. Each method takes the same `QueryClient` the provider was built with:
+`taruvi.invalidate` takes no `QueryClient`. `query(queryKey)`, `database()`, `table(table)`, `lists(table)`, `record(table, id)`, `storage(bucket?)`, `users()`, and `settings()` refresh those areas.
 
-| Call | Invalidates |
-| --- | --- |
-| `taruvi.invalidate.query(queryClient, queryKey)` | That key |
-| `taruvi.invalidate.database(queryClient)` | Every database query |
-| `taruvi.invalidate.table(queryClient, table)` | Every query for that datatable |
-| `taruvi.invalidate.lists(queryClient, table)` | List queries for that datatable |
-| `taruvi.invalidate.record(queryClient, table, id)` | That row |
-| `taruvi.invalidate.storage(queryClient, bucket)` | That bucket, or every bucket when `bucket` is omitted |
-| `taruvi.invalidate.users(queryClient)` | User queries |
-| `taruvi.invalidate.settings(queryClient)` | Settings queries |
-
-`taruviQueryKeys` builds those same keys when the app calls `invalidateQueries` itself.
+Every key is `["taruvi", apiUrl, appSlug, actor, ...]`. The host in `apiUrl` is lowercase and has no trailing slash. `actor` is `"anonymous"`, or a hash of the session token or API key. The raw credential is not in the key. Equivalent filters share a key: object keys are sorted, `undefined` stays distinct from a missing field and from `null`, and unordered filter lists match in any order. Call provider methods during render so a new token builds a new key. On logout, call `taruvi.queryClient.clear()` and delete any `persistQueryClient` file. That file still holds the previous rows, and the next user's keys do not match them.
 
 ## Session
 
-The token lives on the SDK `Client`. A new token on that same client is `new Auth(client).setSession(token)` from `@taruvi/sdk`. A different client means calling `createTaruviProvider` again. Logout is `queryClient.clear()`.
+```ts
+import { Auth } from "@taruvi/tanstack-query";
 
-`taruvi.errors.describe(err)` turns a failure into one line: `detail` or `message` on a `TaruviError`, the `Error` message otherwise, and `"Unknown error"` when the value is not an `Error`.
+const auth = new Auth(sdk);
+auth.login(window.location.origin);
+await auth.validateSession();
+await auth.logout(window.location.origin);
+```
 
-## Build
+`deskUrl` sets the hosted sign-in host and defaults to `apiUrl`. A 403 leaves the token in place. 401, 410, and 419 clear the session. `taruvi.errors.describe(err)` returns `detail` or `message`, then one line per field error.
 
-`npm run build` writes ESM to `dist` and CommonJS to `dist/cjs`. `dist` is generated. Source edits belong in `src`.
+Before 1.0.0, a minor or patch release may change behavior. `@taruvi/sdk` is pinned to 1.5.4. `npm run build` writes ESM to `dist` and CommonJS to `dist/cjs`.
