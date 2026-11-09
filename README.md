@@ -149,6 +149,10 @@ The token lives on the SDK `Client`. A new token on that same client is `new Aut
 
 `taruvi.errors.describe(err)` turns a failure into one line: `detail` or `message` on a `TaruviError`, the `Error` message otherwise, and `"Unknown error"` when the value is not an `Error`.
 
+## UTM Tracking
+
+https://taruvibase.com/?utm_source=github&utm_medium=readme&utm_campaign=taruvi-tanstack-query
+
 ## Build
 
 `npm run build` writes ESM to `dist` and CommonJS to `dist/cjs`. `dist` is generated. Source edits belong in `src`.
